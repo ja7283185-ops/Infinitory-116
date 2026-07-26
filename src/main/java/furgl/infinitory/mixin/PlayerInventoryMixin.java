@@ -21,8 +21,8 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.MathHelper;
 
@@ -239,23 +239,23 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 	}
 
 	@Override
-	public void infinitory$finishVanillaWrite(CompoundTag playerTag) {
+	public void infinitory$finishVanillaWrite(NbtCompound playerTag) {
 		DefaultedList<ItemStack> full = this.infinitory$savedMain != null ? this.infinitory$savedMain : this.main;
 		this.main = full;
 		this.infinitory$savedMain = null;
 
-		ListTag extraList = new ListTag();
+		NbtList extraList = new NbtList();
 		for (int i = 36; i < full.size(); ++i) {
 			ItemStack stack = full.get(i);
 			if (!stack.isEmpty()) {
-				CompoundTag itemTag = new CompoundTag();
+				NbtCompound itemTag = new NbtCompound();
 				itemTag.putInt("Slot", i);
 				stack.toTag(itemTag);
 				extraList.add(itemTag);
 			}
 		}
 
-		CompoundTag infinitoryTag = new CompoundTag();
+		NbtCompound infinitoryTag = new NbtCompound();
 		infinitoryTag.put("Items", extraList);
 		infinitoryTag.putInt("AdditionalSlots", this.infinitory$additionalSlots);
 		infinitoryTag.putString("SortingType", this.infinitory$sortingType.name());
@@ -264,17 +264,17 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 	}
 
 	@Override
-	public void infinitory$readExtraFromTag(CompoundTag playerTag) {
+	public void infinitory$readExtraFromTag(NbtCompound playerTag) {
 		if (!playerTag.contains("InfinitoryData")) {
 			return;
 		}
-		CompoundTag infinitoryTag = playerTag.getCompound("InfinitoryData");
+		NbtCompound infinitoryTag = playerTag.getCompound("InfinitoryData");
 
 		this.infinitory$setAdditionalSlots(infinitoryTag.getInt("AdditionalSlots"));
 
-		ListTag items = infinitoryTag.getList("Items", 10); // 10 = NBT compound tag type id
+		NbtList items = infinitoryTag.getList("Items", 10); // 10 = NBT compound tag type id
 		for (int i = 0; i < items.size(); ++i) {
-			CompoundTag itemTag = items.getCompound(i);
+			NbtCompound itemTag = items.getCompound(i);
 			int slot = itemTag.getInt("Slot");
 			if (slot >= 0 && slot < this.main.size()) {
 				this.main.set(slot, ItemStack.fromTag(itemTag));

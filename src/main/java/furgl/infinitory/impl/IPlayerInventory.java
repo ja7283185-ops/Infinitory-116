@@ -1,6 +1,6 @@
 package furgl.infinitory.impl;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtCompound;
 
 /**
  * Implemented by the PlayerInventoryMixin. Lets other classes (screen handler mixin,
@@ -33,8 +33,8 @@ public interface IPlayerInventory {
 	void infinitory$prepareForVanillaWrite();
 
 	/** Called right after vanilla writes this inventory to NBT; appends the extra slots' contents. */
-	void infinitory$finishVanillaWrite(CompoundTag playerTag);
+	void infinitory$finishVanillaWrite(NbtCompound playerTag);
 
 	/** Called right after vanilla reads this inventory from NBT; restores the extra slots' contents. */
-	void infinitory$readExtraFromTag(CompoundTag playerTag);
+	void infinitory$readExtraFromTag(NbtCompound playerTag);
 }
