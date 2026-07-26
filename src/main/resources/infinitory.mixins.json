@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "furgl.infinitory.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ItemStackMixin",
+    "PlayerInventoryMixin",
+    "PlayerEntityMixin",
+    "PlayerScreenHandlerMixin"
+  ],
+  "client": [
+    "client.InventoryScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
