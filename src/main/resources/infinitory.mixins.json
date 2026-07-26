@@ -7,7 +7,8 @@
     "ItemStackMixin",
     "PlayerInventoryMixin",
     "PlayerEntityMixin",
-    "PlayerScreenHandlerMixin"
+    "PlayerScreenHandlerMixin",
+    "SlotMixin"
   ],
   "client": [
     "client.InventoryScreenMixin"
