@@ -1,20 +1,5 @@
 package furgl.infinitory.mixin;
 
-import java.util.List;
-
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import furgl.infinitory.Utils;
-import furgl.infinitory.config.Config;
-import furgl.infinitory.impl.IPlayerInventory;
-import furgl.infinitory.impl.InfinitorySlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
@@ -22,142 +7,132 @@ import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.slot.Slot;
 
-/**
- * Adds a pool of pre-created (but mostly inactive) extra slots after the offhand slot, and
- * keeps their "active count" synced to the client using a vanilla ScreenHandler Property -
- * the same built-in mechanism vanilla uses to sync a furnace's burn time, so no custom
- * networking is needed for this part.
- *
- * Shift-click routing (transferSlot) is fully replaced so items can flow into/out of the
- * extra slots too. Simplified compared to the original 1.17.1 mod: armor pieces are no
- * longer auto-equipped on shift-click (they just go to general storage like anything else),
- * and expanded 3x3 crafting was left out.
- */
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import furgl.infinitory.Utils;
+import furgl.infinitory.config.Config;
+import furgl.infinitory.impl.IInfinitorySlot;
+import furgl.infinitory.impl.IPlayerInventory;
+import furgl.infinitory.impl.InfinitorySlot;
+
 @Mixin(PlayerScreenHandler.class)
 public abstract class PlayerScreenHandlerMixin {
 
-	@Shadow @Final private PlayerEntity owner;
-	@Shadow @Final public List<Slot> slots;
+@Shadow @Final private PlayerEntity owner;
 
-	@Shadow
-	protected abstract boolean insertItem(ItemStack stack, int startIndex, int endIndex, boolean fromLast);
+@Inject(method = "<init>", at = @At("TAIL"))
+private void infinitory$addExtraSlots(PlayerInventory inventory, boolean onServer, PlayerEntity owner, CallbackInfo ci) {
+PlayerScreenHandler self = (PlayerScreenHandler) (Object) this;
+ScreenHandlerAccessor accessor = (ScreenHandlerAccessor) self;
 
-	@Inject(method = "<init>", at = @At("TAIL"))
-	private void infinitory$addExtraSlots(PlayerInventory inventory, boolean onServer, PlayerEntity owner, CallbackInfo ci) {
-		PlayerScreenHandler self = (PlayerScreenHandler) (Object) this;
+int columns = 9;
+int slotSize = 18;
+int startX = 8;
+int startY = 172;
 
-		java.util.List<InfinitorySlot> extraSlots = new java.util.ArrayList<>();
-		for (int i = 0; i < Config.maxExtraSlots; i++) {
-			int rawIndex = 36 + i;
-			// start every extra slot far off-screen; infinitory$repositionExtraSlots below moves
-			// the currently-active ones into the visible grid.
-			InfinitorySlot extraSlot = new InfinitorySlot(inventory, rawIndex, i, -10000, -10000);
-			extraSlots.add(extraSlot);
-			self.addSlot(extraSlot);
-		}
+java.util.List<InfinitorySlot> extraSlots = new java.util.ArrayList<>();
+for (int i = 0; i < Config.maxExtraSlots; i++) {
+int rawIndex = 36 + i;
+InfinitorySlot extraSlot = new InfinitorySlot(inventory, rawIndex, i, -10000, -10000);
+extraSlots.add(extraSlot);
+accessor.infinitory$addSlot(extraSlot);
+}
 
-		PropertyDelegate delegate = new PropertyDelegate() {
-			@Override
-			public int get(int index) {
-				return ((IPlayerInventory) inventory).infinitory$getAdditionalSlots();
-			}
+PropertyDelegate delegate = new PropertyDelegate() {
+@Override
+public int get(int index) {
+return ((IPlayerInventory) inventory).infinitory$getAdditionalSlots();
+}
 
-			@Override
-			public void set(int index, int value) {
-				((IPlayerInventory) inventory).infinitory$setAdditionalSlots(value);
-				infinitory$repositionExtraSlots(extraSlots, value);
-			}
+@Override
+public void set(int index, int value) {
+((IPlayerInventory) inventory).infinitory$setAdditionalSlots(value);
+infinitory$repositionExtraSlots(extraSlots, value, columns, slotSize, startX, startY);
+}
 
-			@Override
-			public int size() {
-				return 1;
-			}
-		};
-		self.addProperties(delegate);
+@Override
+public int size() {
+return 1;
+}
+};
+accessor.infinitory$addProperties(delegate);
 
-		infinitory$repositionExtraSlots(extraSlots, ((IPlayerInventory) inventory).infinitory$getAdditionalSlots());
-	}
+infinitory$repositionExtraSlots(extraSlots, ((IPlayerInventory) inventory).infinitory$getAdditionalSlots(), columns, slotSize, startX, startY);
+}
 
-	/** Moves the first `activeCount` extra slots into the visible grid below the hotbar, and hides the rest off-screen. */
-	@Unique
-	private static void infinitory$repositionExtraSlots(java.util.List<InfinitorySlot> extraSlots, int activeCount) {
-		int columns = 9;
-		int slotSize = 18;
-		int startX = 8;
-		int startY = 172; // just below the vanilla inventory background
+private static void infinitory$repositionExtraSlots(java.util.List<InfinitorySlot> extraSlots, int activeCount, int columns, int slotSize, int startX, int startY) {
+for (int i = 0; i < extraSlots.size(); i++) {
+IInfinitorySlot slot = (IInfinitorySlot) extraSlots.get(i);
+if (i < activeCount) {
+int col = i % columns;
+int row = i / columns;
+slot.infinitory$setPos(startX + col * slotSize, startY + row * slotSize);
+} else {
+slot.infinitory$setPos(-10000, -10000);
+}
+}
+}
 
-		for (int i = 0; i < extraSlots.size(); i++) {
-			InfinitorySlot slot = extraSlots.get(i);
-			if (i < activeCount) {
-				int col = i % columns;
-				int row = i / columns;
-				slot.x = startX + col * slotSize;
-				slot.y = startY + row * slotSize;
-			} else {
-				slot.x = -10000;
-				slot.y = -10000;
-			}
-		}
-	}
+@Overwrite
+public ItemStack transferSlot(PlayerEntity player, int index) {
+ScreenHandlerAccessor accessor = (ScreenHandlerAccessor) this;
+Slot slot = accessor.infinitory$getSlots().get(index);
+if (slot == null || !slot.hasStack()) {
+return ItemStack.EMPTY;
+}
 
-	@Overwrite
-	public ItemStack transferSlot(PlayerEntity player, int index) {
-		Slot slot = this.slots.get(index);
-		if (slot == null || !slot.hasStack()) {
-			return ItemStack.EMPTY;
-		}
+ItemStack stackInSlot = slot.getStack();
+ItemStack original = stackInSlot.copy();
 
-		ItemStack stackInSlot = slot.getStack();
-		ItemStack original = stackInSlot.copy();
+int activeExtra = Utils.getAdditionalSlots(player);
+final int mainStart = 9;
+final int hotbarStart = 36;
+final int hotbarEnd = 45;
+final int offhand = 45;
+final int extraStart = 46;
+int extraEnd = 46 + activeExtra;
 
-		int activeExtra = Utils.getAdditionalSlots(player);
-		final int mainStart = 9;
-		final int hotbarStart = 36;
-		final int hotbarEnd = 45;
-		final int offhand = 45;
-		final int extraStart = 46;
-		int extraEnd = 46 + activeExtra;
+boolean success;
+if (index == 0 || (index >= 1 && index < 9)) {
+success = accessor.infinitory$insertItem(stackInSlot, mainStart, extraEnd, true);
+if (success && index == 0) {
+slot.onQuickTransfer(stackInSlot, original);
+}
+} else if (index >= extraStart && index < extraEnd) {
+success = accessor.infinitory$insertItem(stackInSlot, mainStart, hotbarEnd, false);
+} else if (index >= hotbarStart && index < hotbarEnd) {
+success = accessor.infinitory$insertItem(stackInSlot, mainStart, hotbarStart, false)
+|| accessor.infinitory$insertItem(stackInSlot, extraStart, extraEnd, false);
+} else if (index >= mainStart && index < hotbarStart) {
+success = accessor.infinitory$insertItem(stackInSlot, hotbarStart, hotbarEnd, false)
+|| accessor.infinitory$insertItem(stackInSlot, extraStart, extraEnd, false);
+} else if (index == offhand) {
+success = accessor.infinitory$insertItem(stackInSlot, mainStart, extraEnd, false);
+} else {
+success = false;
+}
 
-		boolean success;
-		if (index == 0 || (index >= 1 && index < 9)) {
-			// crafting result, crafting grid, or armor -> anywhere in general storage
-			success = this.insertItem(stackInSlot, mainStart, extraEnd, true);
-			if (success && index == 0) {
-				slot.onQuickTransfer(stackInSlot, original);
-			}
-		} else if (index >= extraStart && index < extraEnd) {
-			// extra slot -> main storage + hotbar
-			success = this.insertItem(stackInSlot, mainStart, hotbarEnd, false);
-		} else if (index >= hotbarStart && index < hotbarEnd) {
-			// hotbar -> main storage, then extra
-			success = this.insertItem(stackInSlot, mainStart, hotbarStart, false)
-					|| this.insertItem(stackInSlot, extraStart, extraEnd, false);
-		} else if (index >= mainStart && index < hotbarStart) {
-			// main storage -> hotbar, then extra
-			success = this.insertItem(stackInSlot, hotbarStart, hotbarEnd, false)
-					|| this.insertItem(stackInSlot, extraStart, extraEnd, false);
-		} else if (index == offhand) {
-			// offhand -> anywhere
-			success = this.insertItem(stackInSlot, mainStart, extraEnd, false);
-		} else {
-			success = false;
-		}
+if (!success) {
+return ItemStack.EMPTY;
+}
 
-		if (!success) {
-			return ItemStack.EMPTY;
-		}
+if (stackInSlot.isEmpty()) {
+slot.setStack(ItemStack.EMPTY);
+} else {
+slot.markDirty();
+}
 
-		if (stackInSlot.isEmpty()) {
-			slot.setStack(ItemStack.EMPTY);
-		} else {
-			slot.markDirty();
-		}
+if (stackInSlot.getCount() == original.getCount()) {
+return ItemStack.EMPTY;
+}
 
-		if (stackInSlot.getCount() == original.getCount()) {
-			return ItemStack.EMPTY;
-		}
-
-		slot.onTakeItem(player, stackInSlot);
-		return original;
-	}
+slot.onTakeItem(player, stackInSlot);
+return original;
+}
 }

@@ -98,7 +98,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 			}
 
 			for (ItemStack existing : list) {
-				if (!existing.isEmpty() && ItemStack.canCombine(existing, adding)) {
+				if (!existing.isEmpty() && (ItemStack.areItemsEqual(existing, adding) && ItemStack.areTagsEqual(existing, adding))) {
 					int room = this.getMaxCountPerStack() - existing.getCount();
 					int amount = Math.min(room, adding.getCount());
 					if (amount > 0) {
@@ -190,7 +190,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 
 	@Inject(method = "canStackAddMore", at = @At("RETURN"), cancellable = true)
 	private void infinitory$canStackAddMore(ItemStack existing, ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
-		cir.setReturnValue(!existing.isEmpty() && ItemStack.canCombine(existing, stack));
+		cir.setReturnValue(!existing.isEmpty() && (ItemStack.areItemsEqual(existing, stack) && ItemStack.areTagsEqual(existing, stack)));
 	}
 
 	@Redirect(method = "offer", at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getMaxCount()I"))
@@ -250,7 +250,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 			if (!stack.isEmpty()) {
 				NbtCompound itemTag = new NbtCompound();
 				itemTag.putInt("Slot", i);
-				stack.toTag(itemTag);
+				stack.writeNbt(itemTag);
 				extraList.add(itemTag);
 			}
 		}
@@ -277,7 +277,7 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 			NbtCompound itemTag = items.getCompound(i);
 			int slot = itemTag.getInt("Slot");
 			if (slot >= 0 && slot < this.main.size()) {
-				this.main.set(slot, ItemStack.fromTag(itemTag));
+				this.main.set(slot, ItemStack.fromNbt(itemTag));
 			}
 		}
 
