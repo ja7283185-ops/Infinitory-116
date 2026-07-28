@@ -13,21 +13,21 @@ import net.minecraft.nbt.NbtCompound;
 @Mixin(LivingEntity.class)
 public abstract class PlayerEntityMixin {
 
-@Inject(method = "writeCustomDataToTag", at = @At("HEAD"))
+@Inject(method = "writeCustomDataToNbt", at = @At("HEAD"))
 private void infinitory$preWrite(NbtCompound tag, CallbackInfo ci) {
 if (!((Object) this instanceof PlayerEntity)) return;
 PlayerEntity player = (PlayerEntity) (Object) this;
 ((IPlayerInventory) player.inventory).infinitory$prepareForVanillaWrite();
 }
 
-@Inject(method = "writeCustomDataToTag", at = @At("RETURN"))
+@Inject(method = "writeCustomDataToNbt", at = @At("RETURN"))
 private void infinitory$postWrite(NbtCompound tag, CallbackInfo ci) {
 if (!((Object) this instanceof PlayerEntity)) return;
 PlayerEntity player = (PlayerEntity) (Object) this;
 ((IPlayerInventory) player.inventory).infinitory$finishVanillaWrite(tag);
 }
 
-@Inject(method = "readCustomDataFromTag", at = @At("RETURN"))
+@Inject(method = "readCustomDataFromNbt", at = @At("RETURN"))
 private void infinitory$postRead(NbtCompound tag, CallbackInfo ci) {
 if (!((Object) this instanceof PlayerEntity)) return;
 PlayerEntity player = (PlayerEntity) (Object) this;
