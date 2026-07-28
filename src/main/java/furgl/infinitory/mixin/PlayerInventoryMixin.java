@@ -193,10 +193,6 @@ public abstract class PlayerInventoryMixin implements Inventory, IPlayerInventor
 		cir.setReturnValue(!existing.isEmpty() && (ItemStack.areItemsEqual(existing, stack) && ItemStack.areTagsEqual(existing, stack)));
 	}
 
-	@Redirect(method = "offer", at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getMaxCount()I"))
-	private int infinitory$offerMaxCount(ItemStack stack) {
-		return Config.maxStackSize;
-	}
 
 	@Redirect(method = "addStack(ILnet/minecraft/item/ItemStack;)I", at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getMaxCount()I"))
 	private int infinitory$addStackMaxCount(ItemStack stack) {
